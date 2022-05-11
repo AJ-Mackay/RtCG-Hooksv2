@@ -1,4 +1,4 @@
-import React, { useReducer, useState, useEffect, useCallback } from "react";
+import React, { useReducer, useEffect, useCallback } from "react";
 
 import IngredientForm from "./IngredientForm";
 import IngredientList from "./IngredientList";
@@ -18,11 +18,30 @@ const ingredientReducer = (currentIngredients, action) => {
   }
 };
 
+const httpReducer = (currentHttpState, action) => {
+  switch (action.type) {
+    case "SEND":
+      return { loading: true, error: null };
+    case "RESPONSE":
+      return { ...currentHttpState, loading: false };
+    case "ERROR":
+      return { loading: false, error: action.errorMessage };
+    case "CLEAR":
+      return { ...currentHttpState, error: null };
+    default:
+      throw new Error("Should not be reached!");
+  }
+};
+
 const Ingredients = () => {
   const [userIngredients, dispatch] = useReducer(ingredientReducer, []);
+  const [httpState, dispatchHttp] = useReducer(httpReducer, {
+    loading: false,
+    error: null,
+  });
   // const [userIngredients, setUserIngredients] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState();
+  // const [isLoading, setIsLoading] = useState(false);
+  // const [error, setError] = useState();
 
   useEffect(() => {
     console.log("RENDERING INGREDIENTS", userIngredients);
@@ -34,7 +53,8 @@ const Ingredients = () => {
   }, []);
 
   const addIngredientHandler = (ingredient) => {
-    setIsLoading(true);
+    // setIsLoading(true);
+    dispatchHttp({ type: "SEND" });
     fetch(
       "https://react-hooks-update-7ccb3-default-rtdb.europe-west1.firebasedatabase.app/ingredients.json",
       {
@@ -44,7 +64,8 @@ const Ingredients = () => {
       }
     )
       .then((response) => {
-        setIsLoading(false);
+        // setIsLoading(false);
+        dispatchHttp({ type: "RESPONSE" });
         return response.json();
       })
       .then((responseData) => {
@@ -60,36 +81,42 @@ const Ingredients = () => {
   };
 
   const removeIngredientHandler = (ingredientId) => {
-    setIsLoading(true);
+    // setIsLoading(true);
+    dispatchHttp({ type: "SEND" });
     fetch(
       `https://react-hooks-update-7ccb3-default-rtdb.europe-west1.firebasedatabase.app/ingredients/${ingredientId}.json`,
       {
         method: "DELETE",
       }
     ).then((response) => {
-      setIsLoading(false);
+      // setIsLoading(false);
+      dispatchHttp({ type: "RESPONSE" });
       // setUserIngredients((prevIngredients) => {
       //   return prevIngredients.filter(
       //     (ingredient) => ingredient.id !== ingredientId
       //   );
       // })
       dispatch({ type: "DELETE", id: ingredientId }).catch((error) => {
-        setError(error.message);
-        setIsLoading(false);
+        dispatchHttp({ type: "ERROR", errorMessage: error.message });
+        // setError(error.message);
+        // setIsLoading(false);
       });
     });
   };
 
   const clearError = () => {
-    setError(null);
+    dispatchHttp({ type: "CLEAR" });
+    // setError(null);
   };
 
   return (
     <div className="App">
-      {error && <ErrorModal onClose={clearError}>{error}</ErrorModal>}
+      {httpState && (
+        <ErrorModal onClose={clearError}>{httpState.error}</ErrorModal>
+      )}
       <IngredientForm
         onAddIngredient={addIngredientHandler}
-        loading={isLoading}
+        loading={httpState.loading}
       />
 
       <section>
